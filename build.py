@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""Build V8 as a static library."""
+
+import argparse
+import os
+import subprocess
+import sys
+import platform
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Build V8 as a static library")
+    parser.add_argument("--debug", action="store_true",
+                        help="Build debug version (not supported on Windows)")
+    return parser.parse_args()
+
+
+def run(cmd, cwd=None, env=None):
+    """Run a command and exit on failure."""
+    print(f"==> Running: {' '.join(cmd)}")
+    merged_env = os.environ.copy()
+    if env:
+        merged_env.update(env)
+    result = subprocess.run(cmd, cwd=cwd, env=merged_env)
+    if result.returncode != 0:
+        sys.exit(result.returncode)
+
+
+def get_target_os():
+    """Get the target OS name for V8."""
+    system = platform.system()
+    if system == "Linux":
+        return "linux"
+    elif system == "Darwin":
+        return "mac"
+    elif system == "Windows":
+        return "win"
+    else:
+        print(f"Unsupported OS: {system}")
+        sys.exit(1)
+
+
+def get_target_cpu():
+    """Get the target CPU architecture for V8."""
+    machine = platform.machine().lower()
+    if machine in ("x86_64", "amd64"):
+        return "x64"
+    elif machine in ("aarch64", "arm64"):
+        return "arm64"
+    else:
+        print(f"Unsupported architecture: {machine}")
+        sys.exit(1)
+
+
+def main():
+    args = parse_args()
+
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    v8_dir = os.path.join(root_dir, "v8")
+    depot_tools_dir = os.path.join(root_dir, "depot_tools")
+
+    if not os.path.exists(v8_dir):
+        print("Error: v8 directory not found. Run clone.py first.")
+        sys.exit(1)
+
+    # Add depot_tools to PATH
+    if platform.system() == "Windows":
+        path_sep = ";"
+    else:
+        path_sep = ":"
+    env_path = depot_tools_dir + path_sep + os.environ.get("PATH", "")
+
+    target_os = get_target_os()
+    # Allow override via environment variable for cross-compilation
+    target_cpu = os.environ.get("TARGET_CPU", get_target_cpu())
+
+    # Debug builds not supported on Windows
+    is_debug = args.debug and target_os != "win"
+    if args.debug and target_os == "win":
+        print("Warning: Debug builds not supported on Windows, using release")
+
+    build_type = "debug" if is_debug else "release"
+    print(f"==> Building V8 for {target_os}-{target_cpu} ({build_type})...")
+
+    out_dir = f"out.gn/{target_os}-{target_cpu}-{build_type}"
+    out_path = os.path.join(v8_dir, out_dir)
+
+    # Base GN arguments for a static embeddable library
+    gn_args = [
+        f"is_debug={'true' if is_debug else 'false'}",
+        f'target_cpu="{target_cpu}"',
+        f'v8_target_cpu="{target_cpu}"',
+        "is_component_build=false",
+        "v8_monolithic=true",
+        "v8_use_external_startup_data=false",
+        "treat_warnings_as_errors=false",
+        "v8_enable_sandbox=false",
+        "v8_enable_pointer_compression=false",
+        "v8_enable_i18n_support=false",
+        f"symbol_level={'1' if is_debug else '0'}",
+        "v8_enable_webassembly=true",
+        "is_clang=true",
+        "use_custom_libcxx=false",
+    ]
+
+    # Platform-specific arguments
+    if target_os == "linux":
+        host_cpu = get_target_cpu()
+        is_cross_compile = target_cpu != host_cpu
+        if is_cross_compile:
+            # Cross-compilation needs sysroot
+            gn_args.append("use_sysroot=true")
+        else:
+            gn_args.append("use_sysroot=false")
+    elif target_os == "mac":
+        gn_args.append("use_xcode_clang=true")
+
+    gn_args_str = " ".join(gn_args)
+
+    # Run gn gen
+    print("==> Running gn gen...")
+    run(["gn", "gen", out_dir, f"--args={gn_args_str}"],
+        cwd=v8_dir, env={"PATH": env_path})
+
+    # Build with ninja
+    print("==> Building with ninja...")
+    run(["ninja", "-C", out_dir, "v8_monolith"],
+        cwd=v8_dir, env={"PATH": env_path})
+
+    print("==> Build complete!")
+
+    # Show output
+    if target_os == "win":
+        lib_name = "v8_monolith.lib"
+    else:
+        lib_name = "libv8_monolith.a"
+
+    lib_path = os.path.join(out_path, "obj", lib_name)
+    if os.path.exists(lib_path):
+        size = os.path.getsize(lib_path)
+        print(f"\nStatic library: {lib_path}")
+        print(f"Size: {size / (1024*1024):.1f} MB")
+    else:
+        print(f"\nWarning: Expected library not found at {lib_path}")
+        print("Check the output directory for the built library.")
+
+    print(f"Headers location: {os.path.join(v8_dir, 'include')}")
+
+
+if __name__ == "__main__":
+    main()

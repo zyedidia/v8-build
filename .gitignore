@@ -1,0 +1,6 @@
+reference
+v8
+depot_tools
+.gcs_entries
+.gclient*
+.cipd

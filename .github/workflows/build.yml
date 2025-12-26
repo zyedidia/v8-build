@@ -1,0 +1,111 @@
+name: Build V8
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: x64
+            runner: ubuntu-22.04
+            lib_name: libv8_monolith.a
+            cross_compile: false
+
+          - os: linux
+            arch: arm64
+            runner: ubuntu-22.04
+            lib_name: libv8_monolith.a
+            cross_compile: true
+
+          - os: mac
+            arch: arm64
+            runner: macos-15
+            lib_name: libv8_monolith.a
+            cross_compile: false
+
+          - os: win
+            arch: x64
+            runner: windows-2022
+            lib_name: v8_monolith.lib
+            cross_compile: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'linux' && !matrix.cross_compile
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld
+
+      - name: Install cross-compilation toolchain
+        if: matrix.cross_compile
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yq --no-install-suggests --no-install-recommends \
+            clang lld g++-aarch64-linux-gnu gcc-aarch64-linux-gnu
+
+      - name: Clone V8
+        run: python clone.py
+
+      - name: Build V8
+        run: python build.py
+        env:
+          TARGET_CPU: ${{ matrix.cross_compile && 'arm64' || '' }}
+
+      - name: Prepare artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cp v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/${{ matrix.lib_name }} artifacts/
+          cp -r v8/include artifacts/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: v8-${{ matrix.os }}-${{ matrix.arch }}
+          path: artifacts/
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Package artifacts
+        run: |
+          cd artifacts
+          for dir in */; do
+            name="${dir%/}"
+            tar -czvf "${name}.tar.gz" -C "$dir" .
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.tar.gz
+          generate_release_notes: true
