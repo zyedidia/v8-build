@@ -143,6 +143,7 @@ def main():
         "v8_enable_sandbox=false",
         "v8_enable_pointer_compression=false",
         "v8_enable_i18n_support=false",
+        "v8_enable_temporal=false",
         f"symbol_level={'1' if is_debug else '0'}",
         "v8_enable_webassembly=true",
         "is_clang=true",
