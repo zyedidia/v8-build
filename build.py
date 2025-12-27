@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import platform
+import shutil
 
 
 def parse_args():
@@ -50,6 +51,23 @@ def get_target_cpu():
     else:
         print(f"Unsupported architecture: {machine}")
         sys.exit(1)
+
+
+def install_sysroot(v8_dir, arch):
+    """Install sysroot for cross-compilation."""
+    # Map V8 arch names to sysroot arch names
+    arch_map = {"arm64": "arm64", "x64": "amd64"}
+    sysroot_arch = arch_map.get(arch, arch)
+
+    sysroot_path = os.path.join(v8_dir, "build", "linux", f"debian_bullseye_{sysroot_arch}-sysroot")
+
+    if os.path.isdir(sysroot_path):
+        print(f"==> Sysroot already exists: {sysroot_path}")
+        return
+
+    print(f"==> Installing sysroot for {sysroot_arch}...")
+    script_path = os.path.join(v8_dir, "build", "linux", "sysroot_scripts", "install-sysroot.py")
+    run(["python3", script_path, f"--arch={sysroot_arch}"])
 
 
 def main():
@@ -100,7 +118,7 @@ def main():
         f"symbol_level={'1' if is_debug else '0'}",
         "v8_enable_webassembly=true",
         "is_clang=true",
-        "use_custom_libcxx=false",
+        "use_custom_libcxx=true",
     ]
 
     # Platform-specific arguments
@@ -109,11 +127,19 @@ def main():
         is_cross_compile = target_cpu != host_cpu
         if is_cross_compile:
             # Cross-compilation needs sysroot
+            print(f"==> Cross-compiling from {host_cpu} to {target_cpu}")
+            install_sysroot(v8_dir, target_cpu)
             gn_args.append("use_sysroot=true")
         else:
             gn_args.append("use_sysroot=false")
-    elif target_os == "mac":
-        gn_args.append("use_xcode_clang=true")
+
+    # Use sccache if available
+    sccache_path = shutil.which("sccache")
+    if sccache_path:
+        print(f"==> Using sccache: {sccache_path}")
+        gn_args.append(f'cc_wrapper="{sccache_path}"')
+    else:
+        print("==> sccache not found, building without compilation cache")
 
     gn_args_str = " ".join(gn_args)
 

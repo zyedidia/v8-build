@@ -6,7 +6,7 @@ import subprocess
 import sys
 import platform
 
-V8_VERSION = os.environ.get("V8_VERSION", "14.3.127.17")
+V8_VERSION = os.environ.get("V8_VERSION", "14.2.231.17")
 
 
 def run(cmd, cwd=None, env=None):
@@ -34,17 +34,22 @@ def main():
         print("==> depot_tools already exists, skipping clone")
 
     # Add depot_tools to PATH
-    if platform.system() == "Windows":
+    is_windows = platform.system() == "Windows"
+    if is_windows:
         path_sep = ";"
+        fetch_cmd = "fetch.bat"
+        gclient_cmd = "gclient.bat"
     else:
         path_sep = ":"
+        fetch_cmd = "fetch"
+        gclient_cmd = "gclient"
     env_path = depot_tools_dir + path_sep + os.environ.get("PATH", "")
 
     # Fetch V8 if not present
     v8_dir = os.path.join(root_dir, "v8")
     if not os.path.exists(v8_dir):
         print(f"==> Fetching V8...")
-        run(["fetch", "v8"], cwd=root_dir, env={"PATH": env_path})
+        run([fetch_cmd, "v8"], cwd=root_dir, env={"PATH": env_path})
 
     # Checkout specific version
     print(f"==> Checking out V8 version {V8_VERSION}...")
@@ -52,7 +57,7 @@ def main():
 
     # Sync dependencies
     print("==> Syncing dependencies...")
-    run(["gclient", "sync", "-D"], cwd=v8_dir, env={"PATH": env_path})
+    run([gclient_cmd, "sync", "-D"], cwd=v8_dir, env={"PATH": env_path})
 
     print("==> V8 clone complete!")
 
