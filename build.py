@@ -90,7 +90,7 @@ def main():
 
     target_os = get_target_os()
     # Allow override via environment variable for cross-compilation
-    target_cpu = os.environ.get("TARGET_CPU", get_target_cpu())
+    target_cpu = os.environ.get("TARGET_CPU") or get_target_cpu()
 
     # Debug builds not supported on Windows
     is_debug = args.debug and target_os != "win"

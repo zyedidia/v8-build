@@ -52,6 +52,12 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Select Xcode version
+        if: matrix.os == 'mac'
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.1.app
+          xcodebuild -version
+
       - name: Cache V8 and depot_tools
         uses: actions/cache@v4
         with:

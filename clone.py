@@ -6,7 +6,11 @@ import subprocess
 import sys
 import platform
 
-V8_VERSION = os.environ.get("V8_VERSION", "14.2.231.17")
+V8_VERSION = os.environ.get("V8_VERSION")
+if not V8_VERSION:
+    print("Error: V8_VERSION environment variable is not set")
+    print("Please set V8_VERSION to the desired V8 version tag (e.g., 14.2.231.17)")
+    sys.exit(1)
 
 
 def run(cmd, cwd=None, env=None):
@@ -37,8 +41,8 @@ def main():
     is_windows = platform.system() == "Windows"
     if is_windows:
         path_sep = ";"
-        fetch_cmd = "fetch.bat"
-        gclient_cmd = "gclient.bat"
+        fetch_cmd = os.path.join(depot_tools_dir, "fetch.bat")
+        gclient_cmd = os.path.join(depot_tools_dir, "gclient.bat")
     else:
         path_sep = ":"
         fetch_cmd = "fetch"
