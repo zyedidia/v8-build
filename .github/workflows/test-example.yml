@@ -54,8 +54,8 @@ jobs:
           mkdir -p build
           cd build
           if [ "${{ runner.os }}" = "Windows" ]; then
-            # Use MSVC on Windows (V8 requires it)
-            cmake -G Ninja -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl ..
+            # Use clang-cl on Windows (MSVC-compatible, works with V8)
+            cmake -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl ..
           else
             cmake -G Ninja ..
           fi
