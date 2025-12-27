@@ -10,7 +10,7 @@ include(FetchContent)
 FetchContent_Declare(
   v8
   GIT_REPOSITORY https://github.com/zyedidia/v8-build.git
-  GIT_TAG main
+  GIT_TAG master
 )
 
 FetchContent_MakeAvailable(v8)
