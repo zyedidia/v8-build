@@ -56,9 +56,6 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            depot_tools
-            v8
-            third_party/llvm-build
             ~/.cache/sccache
           key: v8-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('clone.py') }}-${{ env.V8_VERSION }}
           restore-keys: |
