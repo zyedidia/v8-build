@@ -77,18 +77,20 @@ def install_sysroot(v8_dir, arch):
 def download_clang(v8_dir):
     """Download Chromium's clang toolchain."""
     root_dir = os.path.dirname(os.path.abspath(__file__))
-    clang_dir = os.path.join(root_dir, "third_party", "llvm-build", "Release+Asserts")
+    clang_base_path = os.path.join(root_dir, "third_party", "llvm-build")
 
-    if os.path.isdir(clang_dir):
-        print(f"==> Clang already exists: {clang_dir}")
-        return clang_dir
+    # Check if clang is already downloaded
+    clang_bin = os.path.join(clang_base_path, "Release+Asserts", "bin", "clang")
+    if os.path.isfile(clang_bin):
+        print(f"==> Clang already exists: {clang_base_path}")
+        return clang_base_path
 
     print("==> Downloading Chromium's clang...")
     script_path = os.path.join(v8_dir, "tools", "clang", "scripts", "update.py")
-    output_dir = os.path.join(root_dir, "third_party", "llvm-build")
-    run(["python3", script_path, "--output-dir", output_dir])
+    # Run from v8 directory (script expects to be run from there)
+    run(["python3", script_path, "--output-dir", clang_base_path], cwd=v8_dir)
 
-    return clang_dir
+    return clang_base_path
 
 
 def main():
@@ -102,11 +104,16 @@ def main():
         print("Error: v8 directory not found. Run clone.py first.")
         sys.exit(1)
 
-    # Add depot_tools to PATH
-    if platform.system() == "Windows":
+    # Add depot_tools to PATH and get command names
+    is_windows = platform.system() == "Windows"
+    if is_windows:
         path_sep = ";"
+        gn_cmd = os.path.join(depot_tools_dir, "gn.bat")
+        ninja_cmd = os.path.join(depot_tools_dir, "ninja.bat")
     else:
         path_sep = ":"
+        gn_cmd = "gn"
+        ninja_cmd = "ninja"
     env_path = depot_tools_dir + path_sep + os.environ.get("PATH", "")
 
     target_os = get_target_os()
@@ -145,10 +152,23 @@ def main():
     # Download Chromium's clang
     # This avoids Xcode SDK issues on macOS and ensures consistent toolchain
     clang_base_path = download_clang(v8_dir)
-    gn_args.append(f'clang_base_path="{clang_base_path}"')
+    # Use absolute path for clang_base_path
+    clang_base_path_abs = os.path.abspath(clang_base_path)
+    print(f"==> Using clang at: {clang_base_path_abs}")
+
+    # Verify clang binary exists
+    clang_bin = os.path.join(clang_base_path_abs, "Release+Asserts", "bin", "clang")
+    if not os.path.isfile(clang_bin):
+        print(f"WARNING: Clang binary not found at {clang_bin}")
+        print("The clang download may have failed. Build may use system clang instead.")
+
+    gn_args.append(f'clang_base_path="{clang_base_path_abs}"')
 
     # Platform-specific arguments
-    if target_os == "linux":
+    if target_os == "mac":
+        # On macOS, avoid using clang modules which require Xcode SDK
+        gn_args.append("enable_precompiled_headers=false")
+    elif target_os == "linux":
         host_cpu = get_target_cpu()
         is_cross_compile = target_cpu != host_cpu
         if is_cross_compile:
@@ -171,12 +191,12 @@ def main():
 
     # Run gn gen
     print("==> Running gn gen...")
-    run(["gn", "gen", out_dir, f"--args={gn_args_str}"],
+    run([gn_cmd, "gen", out_dir, f"--args={gn_args_str}"],
         cwd=v8_dir, env={"PATH": env_path})
 
     # Build with ninja
     print("==> Building with ninja...")
-    run(["ninja", "-C", out_dir, "v8_monolith"],
+    run([ninja_cmd, "-C", out_dir, "v8_monolith"],
         cwd=v8_dir, env={"PATH": env_path})
 
     print("==> Build complete!")
