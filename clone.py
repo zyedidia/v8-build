@@ -12,6 +12,10 @@ if not V8_VERSION:
     print("Please set V8_VERSION to the desired V8 version tag (e.g., 14.2.231.17)")
     sys.exit(1)
 
+# On Windows, use locally installed Visual Studio instead of downloading
+if platform.system() == "Windows":
+    os.environ["DEPOT_TOOLS_WIN_TOOLCHAIN"] = "0"
+
 
 def run(cmd, cwd=None, env=None):
     """Run a command and exit on failure."""

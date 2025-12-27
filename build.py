@@ -8,6 +8,10 @@ import sys
 import platform
 import shutil
 
+# On Windows, use locally installed Visual Studio instead of downloading
+if platform.system() == "Windows":
+    os.environ["DEPOT_TOOLS_WIN_TOOLCHAIN"] = "0"
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Build V8 as a static library")
@@ -70,6 +74,23 @@ def install_sysroot(v8_dir, arch):
     run(["python3", script_path, f"--arch={sysroot_arch}"])
 
 
+def download_clang(v8_dir):
+    """Download Chromium's clang toolchain."""
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    clang_dir = os.path.join(root_dir, "third_party", "llvm-build", "Release+Asserts")
+
+    if os.path.isdir(clang_dir):
+        print(f"==> Clang already exists: {clang_dir}")
+        return clang_dir
+
+    print("==> Downloading Chromium's clang...")
+    script_path = os.path.join(v8_dir, "tools", "clang", "scripts", "update.py")
+    output_dir = os.path.join(root_dir, "third_party", "llvm-build")
+    run(["python3", script_path, "--output-dir", output_dir])
+
+    return clang_dir
+
+
 def main():
     args = parse_args()
 
@@ -120,6 +141,11 @@ def main():
         "is_clang=true",
         "use_custom_libcxx=true",
     ]
+
+    # Download Chromium's clang
+    # This avoids Xcode SDK issues on macOS and ensures consistent toolchain
+    clang_base_path = download_clang(v8_dir)
+    gn_args.append(f'clang_base_path="{clang_base_path}"')
 
     # Platform-specific arguments
     if target_os == "linux":

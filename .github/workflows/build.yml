@@ -52,18 +52,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Select Xcode version
-        if: matrix.os == 'mac'
-        run: |
-          sudo xcode-select -s /Applications/Xcode_15.4.app
-          xcodebuild -version
-
       - name: Cache V8 and depot_tools
         uses: actions/cache@v4
         with:
           path: |
             depot_tools
             v8
+            third_party/llvm-build
             ~/.cache/sccache
           key: v8-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('clone.py') }}-${{ env.V8_VERSION }}
           restore-keys: |
@@ -118,7 +113,6 @@ jobs:
         run: python build.py
         env:
           TARGET_CPU: ${{ matrix.cross_compile && 'arm64' || '' }}
-          DEPOT_TOOLS_WIN_TOOLCHAIN: ${{ matrix.os == 'win' && '0' || '' }}
 
       - name: Prepare artifacts
         shell: bash
