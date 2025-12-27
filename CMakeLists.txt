@@ -1,10 +1,4 @@
 cmake_minimum_required(VERSION 3.18)
-
-# On Windows, use static runtime library to match V8
-if(MSVC OR (WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-
 project(v8_prebuilt VERSION 14.0.365.10)
 
 set(CMAKE_CXX_STANDARD 20)
