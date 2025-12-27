@@ -17,13 +17,13 @@ jobs:
         include:
           - os: linux
             arch: x64
-            runner: ubuntu-22.04
+            runner: ubuntu-24.04
             lib_name: libv8_monolith.a
             cross_compile: false
 
           - os: linux
             arch: arm64
-            runner: ubuntu-22.04
+            runner: ubuntu-24.04
             lib_name: libv8_monolith.a
             cross_compile: true
 
