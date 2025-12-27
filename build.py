@@ -169,12 +169,10 @@ def main():
         host_cpu = get_target_cpu()
         is_cross_compile = target_cpu != host_cpu
         if is_cross_compile:
-            # Cross-compilation needs sysroot
             print(f"==> Cross-compiling from {host_cpu} to {target_cpu}")
-            install_sysroot(v8_dir, target_cpu)
-            gn_args.append("use_sysroot=true")
-        else:
-            gn_args.append("use_sysroot=false")
+            # Don't use sysroot - it has old libstdc++ without C++20 support
+            # The cross-compilation toolchain provides the necessary headers
+        gn_args.append("use_sysroot=false")
 
     # Use sccache if available
     sccache_path = shutil.which("sccache")
