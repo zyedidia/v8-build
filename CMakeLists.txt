@@ -82,7 +82,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         INTERFACE_LINK_LIBRARIES pthread dl)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set_property(TARGET v8_monolith APPEND PROPERTY
-        INTERFACE_LINK_LIBRARIES "-framework CoreFoundation")
+        INTERFACE_LINK_LIBRARIES
+        "-framework CoreFoundation"
+        "-framework Foundation"
+        "-framework Security")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set_property(TARGET v8_monolith APPEND PROPERTY
         INTERFACE_LINK_LIBRARIES winmm dbghelp)

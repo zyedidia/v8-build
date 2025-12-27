@@ -4,3 +4,4 @@ depot_tools
 .gcs_entries
 .gclient*
 .cipd
+example/build

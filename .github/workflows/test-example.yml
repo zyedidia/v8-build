@@ -49,10 +49,16 @@ jobs:
 
       - name: Configure CMake
         working-directory: example
+        shell: bash
         run: |
           mkdir -p build
           cd build
-          cmake -G Ninja ..
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            # Use MSVC on Windows (V8 requires it)
+            cmake -G Ninja -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl ..
+          else
+            cmake -G Ninja ..
+          fi
 
       - name: Build example
         working-directory: example/build
