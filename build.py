@@ -146,7 +146,7 @@ def main():
         f"symbol_level={'1' if is_debug else '0'}",
         "v8_enable_webassembly=true",
         "is_clang=true",
-        "use_custom_libcxx=true",
+        "use_custom_libcxx=false",
     ]
 
     # Download Chromium's clang
