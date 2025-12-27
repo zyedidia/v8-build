@@ -1,0 +1,87 @@
+name: Test Example
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-example:
+    name: Test Example on ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux-x64
+            runner: ubuntu-24.04
+
+          - os: linux-arm64
+            runner: ubuntu-24.04-arm64
+
+          - os: macos-arm64
+            runner: macos-15
+
+          - os: windows-x64
+            runner: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install ninja
+
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        run: |
+          choco install ninja
+          echo "C:\ProgramData\chocolatey\lib\ninja\tools" >> $GITHUB_PATH
+
+      - name: Configure CMake
+        working-directory: example
+        run: |
+          mkdir -p build
+          cd build
+          cmake -G Ninja ..
+
+      - name: Build example
+        working-directory: example/build
+        run: ninja
+
+      - name: Run example
+        working-directory: example/build
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ./hello_world.exe
+          else
+            ./hello_world
+          fi
+
+      - name: Verify output
+        working-directory: example/build
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            OUTPUT=$(./hello_world.exe)
+          else
+            OUTPUT=$(./hello_world)
+          fi
+
+          if [[ "$OUTPUT" == *"Hello, World!"* ]]; then
+            echo "Example ran successfully and produced expected output"
+          else
+            echo "Example output did not match expected"
+            echo "Got: $OUTPUT"
+            exit 1
+          fi
