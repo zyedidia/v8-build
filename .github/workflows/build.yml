@@ -30,7 +30,7 @@ jobs:
 
           - os: mac
             arch: arm64
-            runner: macos-15
+            runner: macos-14
             lib_name: libv8_monolith.a
             cross_compile: false
 

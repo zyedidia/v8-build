@@ -165,10 +165,7 @@ def main():
     gn_args.append(f'clang_base_path="{clang_base_path_abs}"')
 
     # Platform-specific arguments
-    if target_os == "mac":
-        # On macOS, avoid using clang modules which require Xcode SDK
-        gn_args.append("enable_precompiled_headers=false")
-    elif target_os == "linux":
+    if target_os == "linux":
         host_cpu = get_target_cpu()
         is_cross_compile = target_cpu != host_cpu
         if is_cross_compile:
