@@ -69,6 +69,20 @@ find_library(V8_LIBRARY
     NO_DEFAULT_PATH
     REQUIRED)
 
+# On Linux, also find additional V8 libraries that may not be fully merged into monolith
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_library(V8_LIBBASE
+        NAMES libv8_libbase.a
+        PATHS "${V8_DOWNLOAD_DIR}"
+        NO_DEFAULT_PATH
+        REQUIRED)
+    find_library(V8_LIBPLATFORM
+        NAMES libv8_libplatform.a
+        PATHS "${V8_DOWNLOAD_DIR}"
+        NO_DEFAULT_PATH
+        REQUIRED)
+endif()
+
 # Create imported library target
 add_library(v8_monolith STATIC IMPORTED GLOBAL)
 set_target_properties(v8_monolith PROPERTIES
@@ -79,7 +93,7 @@ set_target_properties(v8_monolith PROPERTIES
 # Platform-specific link libraries
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set_property(TARGET v8_monolith APPEND PROPERTY
-        INTERFACE_LINK_LIBRARIES pthread dl)
+        INTERFACE_LINK_LIBRARIES "${V8_LIBBASE}" "${V8_LIBPLATFORM}" pthread dl)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set_property(TARGET v8_monolith APPEND PROPERTY
         INTERFACE_LINK_LIBRARIES

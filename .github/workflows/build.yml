@@ -116,6 +116,11 @@ jobs:
         run: |
           mkdir -p artifacts
           cp v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/${{ matrix.lib_name }} artifacts/
+          # On Linux, also copy additional required libraries
+          if [ "${{ matrix.os }}" = "linux" ]; then
+            cp v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/libv8_libbase.a artifacts/
+            cp v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/libv8_libplatform.a artifacts/
+          fi
           cp -r v8/include artifacts/
 
       - name: Upload artifacts
