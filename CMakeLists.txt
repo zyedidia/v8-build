@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # V8 version to download
-set(V8_VERSION "v14.0.365.10-8" CACHE STRING "V8 version to download")
+set(V8_VERSION "v14.0.365.10-9" CACHE STRING "V8 version to download")
 set(V8_REPO "zyedidia/v8-build" CACHE STRING "GitHub repository for V8 prebuilts")
 
 # Detect platform
