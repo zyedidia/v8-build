@@ -116,10 +116,14 @@ jobs:
         run: |
           mkdir -p artifacts
           cp v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/${{ matrix.lib_name }} artifacts/
-          # On Linux, also copy additional required libraries
+          # On Linux, also copy additional required libraries and convert them from thin archives
           if [ "${{ matrix.os }}" = "linux" ]; then
-            cp v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/libv8_libbase.a artifacts/
-            cp v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/libv8_libplatform.a artifacts/
+            LIBBASE=v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/libv8_libbase.a
+            LIBPLATFORM=v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/libv8_libplatform.a
+            ar -t $LIBBASE | xargs ar rvs $LIBBASE.new && mv -v $LIBBASE.new $LIBBASE
+            ar -t $LIBPLATFORM | xargs ar rvs $LIBPLATFORM.new && mv -v $LIBPLATFORM.new $LIBPLATFORM
+            cp $LIBBASE artifacts/
+            cp $LIBPLATFORM artifacts/
           fi
           cp -r v8/include artifacts/
 
