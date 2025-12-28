@@ -137,7 +137,7 @@ def main():
         f'target_cpu="{target_cpu}"',
         f'v8_target_cpu="{target_cpu}"',
         "is_component_build=false",
-        "complete_static_lib=true",
+        "v8_static_library=true",
         "v8_monolithic=true",
         "v8_use_external_startup_data=false",
         "treat_warnings_as_errors=false",
