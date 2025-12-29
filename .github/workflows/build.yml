@@ -28,10 +28,6 @@ jobs:
           - { os: mac, target_cpu: arm64, runner: macos-15, platform: aarch64-apple-darwin, build_type: release }
           - { os: mac, target_cpu: arm64, runner: macos-15, platform: aarch64-apple-darwin, build_type: debug }
 
-          # macOS x64
-          - { os: mac, target_cpu: x64, runner: macos-13, platform: x86_64-apple-darwin, build_type: release }
-          - { os: mac, target_cpu: x64, runner: macos-13, platform: x86_64-apple-darwin, build_type: debug }
-
           # Windows x64 (release only, debug not supported)
           - { os: win, target_cpu: x64, runner: windows-2022, platform: x86_64-pc-windows-msvc, build_type: release }
 
