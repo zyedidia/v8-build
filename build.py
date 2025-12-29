@@ -79,7 +79,7 @@ def install_sysroot(v8_dir, arch):
 
     print(f"==> Installing sysroot for {sysroot_arch}...")
     script_path = os.path.join(v8_dir, "build", "linux", "sysroot_scripts", "install-sysroot.py")
-    run(["python3", script_path, f"--arch={sysroot_arch}"])
+    run([sys.executable, script_path, f"--arch={sysroot_arch}"])
 
 
 def download_clang(v8_dir, root_dir):
@@ -95,7 +95,7 @@ def download_clang(v8_dir, root_dir):
     print("==> Downloading Chromium's clang...")
     script_path = os.path.join(v8_dir, "tools", "clang", "scripts", "update.py")
     # Run from v8 directory (script expects to be run from there)
-    run(["python3", script_path, "--output-dir", clang_base_path], cwd=v8_dir)
+    run([sys.executable, script_path, "--output-dir", clang_base_path], cwd=v8_dir)
 
     return clang_base_path
 
