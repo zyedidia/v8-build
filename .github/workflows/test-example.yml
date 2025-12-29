@@ -57,8 +57,6 @@ jobs:
             # Use clang-cl on Windows (MSVC-compatible, works with V8)
             # Build in Release mode to match V8 prebuilt binaries
             cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl ..
-          elif [ "${{ runner.os }}" = "Linux" ]; then
-            cmake -G Ninja -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_CXX_FLAGS="-fuse-ld=lld"
           else
             cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
           fi
@@ -75,8 +73,6 @@ jobs:
           cd build
           if [ "${{ runner.os }}" = "Windows" ]; then
             cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl ..
-          elif [ "${{ runner.os }}" = "Linux" ]; then
-            cmake -G Ninja -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_CXX_FLAGS="-fuse-ld=lld"
           else
             cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
           fi
@@ -126,3 +122,23 @@ jobs:
             echo "Got: $OUTPUT"
             exit 1
           fi
+
+      - name: Configure hello example (debug)
+        if: runner.os != 'Windows'
+        working-directory: examples/hello
+        shell: bash
+        run: |
+          rm -rf build-debug
+          mkdir -p build-debug
+          cd build-debug
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DV8_DEBUG=ON ..
+
+      - name: Build hello example (debug)
+        if: runner.os != 'Windows'
+        working-directory: examples/hello/build-debug
+        run: ninja
+
+      - name: Run hello example (debug)
+        if: runner.os != 'Windows'
+        working-directory: examples/hello/build-debug
+        run: ./hello
