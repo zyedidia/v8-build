@@ -88,10 +88,16 @@ jobs:
           for dir in */; do
             name="${dir%/}"
             tar -czvf "${name}.tar.gz" -C "$dir" .
+            # Also create .zip for Windows builds
+            if [[ "$name" == *"windows"* ]]; then
+              (cd "$dir" && zip -r "../${name}.zip" .)
+            fi
           done
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.tar.gz
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
           generate_release_notes: true
