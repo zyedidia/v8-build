@@ -10,6 +10,8 @@ project(v8_hello_world)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+
 # Fetch V8 prebuilt binaries
 include(FetchContent)
 
@@ -24,3 +26,4 @@ FetchContent_MakeAvailable(v8)
 # Create executable and link against V8
 add_executable(hello_world hello_world.cpp)
 target_link_libraries(hello_world PRIVATE v8::v8)
+set_target_properties(hello_world PROPERTIES LINK_FLAGS "-fuse-ld=lld")
