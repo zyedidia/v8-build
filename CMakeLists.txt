@@ -110,7 +110,7 @@ set_target_properties(v8_monolith PROPERTIES
 # Platform-specific link libraries
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set_property(TARGET v8_monolith APPEND PROPERTY
-        INTERFACE_LINK_LIBRARIES "${V8_LIBBASE}" "${V8_LIBPLATFORM}" pthread dl)
+        INTERFACE_LINK_LIBRARIES "${V8_LIBBASE}" "${V8_LIBPLATFORM}" pthread dl atomic)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set_property(TARGET v8_monolith APPEND PROPERTY
         INTERFACE_LINK_LIBRARIES
