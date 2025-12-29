@@ -35,6 +35,12 @@ This will automatically download the correct release from GitHub. If you have a
 local build or manually downloaded the prebuilt version, you can use
 `V8_LOCAL_PATH` to point CMake to that.
 
+On Windows you also have to add
+
+```
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+```
+
 See `examples/hello/` for a complete "hello world" example and
 `examples/advanced` for more advanced examples.
 
