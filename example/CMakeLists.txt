@@ -26,4 +26,6 @@ FetchContent_MakeAvailable(v8)
 # Create executable and link against V8
 add_executable(hello_world hello_world.cpp)
 target_link_libraries(hello_world PRIVATE v8::v8)
-set_target_properties(hello_world PROPERTIES LINK_FLAGS "-fuse-ld=lld")
+if (LINUX)
+  set_target_properties(hello_world PROPERTIES LINK_FLAGS "-fuse-ld=lld")
+endif()
