@@ -31,14 +31,18 @@ To use a debug build:
 cmake -B build -DV8_DEBUG=ON .
 ```
 
+See `example/` for a complete "hello world" example.
+
 ## Building from Source
+
+See the GitHub Actions workflow for full details.
 
 ### Prerequisites
 
 - Python 3
 - Git
 - Platform-specific:
-  - **Linux**: clang, lld, pkg-config, libglib2.0-dev
+  - **Linux**: pkg-config, libglib2.0-dev
   - **macOS**: Xcode command line tools
   - **Windows**: Visual Studio 2022
 
