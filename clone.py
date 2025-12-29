@@ -28,6 +28,33 @@ def run(cmd, cwd=None, env=None):
         sys.exit(result.returncode)
 
 
+def patch_crel_flag(v8_dir):
+    """Remove --allow-experimental-crel flag from BUILD.gn.
+
+    This flag breaks linking with older compiler toolchains.
+    """
+    build_gn = os.path.join(v8_dir, "build", "config", "compiler", "BUILD.gn")
+    if not os.path.exists(build_gn):
+        print(f"Warning: {build_gn} not found, skipping crel patch")
+        return
+
+    print("==> Removing --allow-experimental-crel flag from BUILD.gn...")
+    with open(build_gn, "r") as f:
+        content = f.read()
+
+    # Remove the line that adds the crel flag
+    patched = content.replace(
+        '      cflags += [ "-Wa,--crel,--allow-experimental-crel" ]\n', ""
+    )
+
+    if patched != content:
+        with open(build_gn, "w") as f:
+            f.write(patched)
+        print("==> Patched BUILD.gn to remove crel flag")
+    else:
+        print("==> crel flag not found or already removed")
+
+
 def main():
     root_dir = os.path.dirname(os.path.abspath(__file__))
     depot_tools_dir = os.path.join(root_dir, "depot_tools")
@@ -66,6 +93,9 @@ def main():
     # Sync dependencies
     print("==> Syncing dependencies...")
     run([gclient_cmd, "sync", "-D"], cwd=v8_dir, env={"PATH": env_path})
+
+    # Patch BUILD.gn to remove crel flag that breaks older toolchains
+    patch_crel_flag(v8_dir)
 
     print("==> V8 clone complete!")
 
