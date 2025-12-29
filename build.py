@@ -87,7 +87,7 @@ def download_clang(v8_dir, root_dir):
     clang_base_path = os.path.join(root_dir, "third_party", "llvm-build")
 
     # Check if clang is already downloaded
-    clang_bin = os.path.join(clang_base_path, "Release+Asserts", "bin", "clang")
+    clang_bin = os.path.join(clang_base_path, "bin", "clang")
     if os.path.isfile(clang_bin):
         print(f"==> Clang already exists: {clang_base_path}")
         return clang_base_path
@@ -216,7 +216,7 @@ def main():
     print(f"==> Using clang at: {clang_base_path_abs}")
 
     # Verify clang binary exists
-    clang_bin = os.path.join(clang_base_path_abs, "Release+Asserts", "bin", "clang")
+    clang_bin = os.path.join(clang_base_path_abs, "bin", "clang")
     if not os.path.isfile(clang_bin):
         print(f"WARNING: Clang binary not found at {clang_bin}")
         print("The clang download may have failed. Build may use system clang instead.")
@@ -252,9 +252,16 @@ def main():
     # Combine prefix args with custom args
     gn_args_str = "\n".join(gn_args_prefix) + "\n" + custom_args
 
+    # Write args.gn to output directory (more robust than passing via command line)
+    os.makedirs(out_path, exist_ok=True)
+    out_args_gn = os.path.join(out_path, "args.gn")
+    with open(out_args_gn, "w") as f:
+        f.write(gn_args_str)
+    print(f"==> Wrote {out_args_gn}")
+
     # Run gn gen
     print("==> Running gn gen...")
-    run([gn_cmd, "gen", out_dir, f"--args={gn_args_str}"],
+    run([gn_cmd, "gen", out_dir],
         cwd=v8_dir, env={"PATH": env_path})
 
     # Build with ninja
