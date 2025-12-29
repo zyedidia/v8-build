@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """Clone V8 and its dependencies using depot_tools."""
 
+import argparse
 import os
 import subprocess
 import sys
 import platform
 
-V8_VERSION = os.environ.get("V8_VERSION")
-if not V8_VERSION:
-    print("Error: V8_VERSION environment variable is not set")
-    print("Please set V8_VERSION to the desired V8 version tag (e.g., 14.2.231.17)")
-    sys.exit(1)
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Clone V8 and its dependencies")
+    parser.add_argument("-C", dest="directory", metavar="DIR",
+                        help="Clone into this directory instead of the script directory")
+    parser.add_argument("--v8-version", required=True,
+                        help="V8 version tag to clone (e.g., 14.0.365.10)")
+    return parser.parse_args()
+
 
 # On Windows, use locally installed Visual Studio instead of downloading
 if platform.system() == "Windows":
@@ -56,7 +61,14 @@ def patch_crel_flag(v8_dir):
 
 
 def main():
-    root_dir = os.path.dirname(os.path.abspath(__file__))
+    args = parse_args()
+
+    if args.directory:
+        root_dir = os.path.abspath(args.directory)
+        os.makedirs(root_dir, exist_ok=True)
+    else:
+        root_dir = os.path.dirname(os.path.abspath(__file__))
+
     depot_tools_dir = os.path.join(root_dir, "depot_tools")
 
     # Clone depot_tools if not present
@@ -87,8 +99,8 @@ def main():
         run([fetch_cmd, "v8"], cwd=root_dir, env={"PATH": env_path})
 
     # Checkout specific version
-    print(f"==> Checking out V8 version {V8_VERSION}...")
-    run(["git", "checkout", V8_VERSION], cwd=v8_dir)
+    print(f"==> Checking out V8 version {args.v8_version}...")
+    run(["git", "checkout", args.v8_version], cwd=v8_dir)
 
     # Sync dependencies
     print("==> Syncing dependencies...")

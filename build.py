@@ -15,8 +15,16 @@ if platform.system() == "Windows":
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Build V8 as a static library")
+    parser.add_argument("-C", dest="directory", metavar="DIR",
+                        help="Build in this directory instead of the script directory")
     parser.add_argument("--debug", action="store_true",
                         help="Build debug version (not supported on Windows)")
+    parser.add_argument("--install", dest="install_dir", metavar="DIR",
+                        help="Install V8 libraries and headers to this directory")
+    parser.add_argument("--target-cpu", choices=["x64", "arm64"],
+                        help="Target CPU architecture (for cross-compilation)")
+    parser.add_argument("--args-gn", dest="args_gn", metavar="FILE", required=True,
+                        help="Path to args.gn file with GN build arguments")
     return parser.parse_args()
 
 
@@ -74,9 +82,8 @@ def install_sysroot(v8_dir, arch):
     run(["python3", script_path, f"--arch={sysroot_arch}"])
 
 
-def download_clang(v8_dir):
+def download_clang(v8_dir, root_dir):
     """Download Chromium's clang toolchain."""
-    root_dir = os.path.dirname(os.path.abspath(__file__))
     clang_base_path = os.path.join(root_dir, "third_party", "llvm-build")
 
     # Check if clang is already downloaded
@@ -93,10 +100,82 @@ def download_clang(v8_dir):
     return clang_base_path
 
 
+def convert_thin_archive(archive_path):
+    """Convert a thin archive to a regular archive.
+
+    V8 builds thin archives on Linux which only contain references to object
+    files. This converts them to regular archives that are self-contained.
+    """
+    print(f"==> Converting thin archive: {archive_path}")
+    # List members of the thin archive
+    result = subprocess.run(["ar", "-t", archive_path],
+                            capture_output=True, text=True, check=True)
+    members = result.stdout.strip().split('\n')
+
+    # Create a new archive with the actual object files
+    new_archive = archive_path + ".new"
+    cmd = ["ar", "rvs", new_archive] + members
+    subprocess.run(cmd, cwd=os.path.dirname(archive_path), check=True)
+
+    # Replace the original
+    shutil.move(new_archive, archive_path)
+
+
+def install_v8(v8_dir, out_path, install_dir, target_os):
+    """Install V8 libraries and headers to the specified directory."""
+    print(f"==> Installing V8 to {install_dir}...")
+
+    os.makedirs(install_dir, exist_ok=True)
+
+    obj_dir = os.path.join(out_path, "obj")
+
+    # Copy the monolith library
+    if target_os == "win":
+        lib_name = "v8_monolith.lib"
+    else:
+        lib_name = "libv8_monolith.a"
+
+    lib_src = os.path.join(obj_dir, lib_name)
+    lib_dst = os.path.join(install_dir, lib_name)
+    print(f"    Copying {lib_name}")
+    shutil.copy2(lib_src, lib_dst)
+
+    # On Linux, also copy libbase and libplatform (after converting from thin archives)
+    if target_os == "linux":
+        for extra_lib in ["libv8_libbase.a", "libv8_libplatform.a"]:
+            lib_src = os.path.join(obj_dir, extra_lib)
+            if os.path.exists(lib_src):
+                convert_thin_archive(lib_src)
+                lib_dst = os.path.join(install_dir, extra_lib)
+                print(f"    Copying {extra_lib}")
+                shutil.copy2(lib_src, lib_dst)
+
+    # Copy include directory
+    include_src = os.path.join(v8_dir, "include")
+    include_dst = os.path.join(install_dir, "include")
+    print(f"    Copying include/")
+    if os.path.exists(include_dst):
+        shutil.rmtree(include_dst)
+    shutil.copytree(include_src, include_dst)
+
+    # Copy args.gn so users can see the build configuration
+    args_gn_src = os.path.join(out_path, "args.gn")
+    args_gn_dst = os.path.join(install_dir, "args.gn")
+    if os.path.exists(args_gn_src):
+        print(f"    Copying args.gn")
+        shutil.copy2(args_gn_src, args_gn_dst)
+
+    print(f"==> Installation complete: {install_dir}")
+
+
 def main():
     args = parse_args()
 
-    root_dir = os.path.dirname(os.path.abspath(__file__))
+    if args.directory:
+        root_dir = os.path.abspath(args.directory)
+    else:
+        root_dir = os.path.dirname(os.path.abspath(__file__))
+
     v8_dir = os.path.join(root_dir, "v8")
     depot_tools_dir = os.path.join(root_dir, "depot_tools")
 
@@ -117,8 +196,7 @@ def main():
     env_path = depot_tools_dir + path_sep + os.environ.get("PATH", "")
 
     target_os = get_target_os()
-    # Allow override via environment variable for cross-compilation
-    target_cpu = os.environ.get("TARGET_CPU") or get_target_cpu()
+    target_cpu = args.target_cpu or get_target_cpu()
 
     # Debug builds not supported on Windows
     is_debug = args.debug and target_os != "win"
@@ -131,31 +209,9 @@ def main():
     out_dir = f"out.gn/{target_os}-{target_cpu}-{build_type}"
     out_path = os.path.join(v8_dir, out_dir)
 
-    # Base GN arguments for a static embeddable library
-    gn_args = [
-        f"is_debug={'true' if is_debug else 'false'}",
-        f'target_cpu="{target_cpu}"',
-        f'v8_target_cpu="{target_cpu}"',
-        "is_component_build=false",
-        "v8_monolithic=true",
-        "v8_use_external_startup_data=false",
-        "treat_warnings_as_errors=false",
-        "v8_enable_sandbox=false",
-        "v8_enable_pointer_compression=false",
-        "v8_enable_i18n_support=false",
-        "v8_enable_temporal_support=false",
-        "enable_rust=false",
-        "clang_use_chrome_plugins=false",
-        f"symbol_level={'1' if is_debug else '0'}",
-        "v8_enable_webassembly=true",
-        "is_clang=true",
-        "use_custom_libcxx=false",
-    ]
-
     # Download Chromium's clang
     # This avoids Xcode SDK issues on macOS and ensures consistent toolchain
-    clang_base_path = download_clang(v8_dir)
-    # Use absolute path for clang_base_path
+    clang_base_path = download_clang(v8_dir, root_dir)
     clang_base_path_abs = os.path.abspath(clang_base_path)
     print(f"==> Using clang at: {clang_base_path_abs}")
 
@@ -165,7 +221,20 @@ def main():
         print(f"WARNING: Clang binary not found at {clang_bin}")
         print("The clang download may have failed. Build may use system clang instead.")
 
-    gn_args.append(f'clang_base_path="{clang_base_path_abs}"')
+    # Flag-dependent GN arguments (prepended to args.gn)
+    gn_args_prefix = [
+        f"is_debug={'true' if is_debug else 'false'}",
+        f'target_cpu="{target_cpu}"',
+        f'v8_target_cpu="{target_cpu}"',
+        f"symbol_level={'1' if is_debug else '0'}",
+        f'clang_base_path="{clang_base_path_abs}"',
+        "is_component_build=false",
+        "v8_monolithic=true",
+        "treat_warnings_as_errors=false",
+        "clang_use_chrome_plugins=false",
+        "is_clang=true",
+        "use_custom_libcxx=false",
+    ]
 
     # Platform-specific arguments
     if target_os == "linux":
@@ -173,19 +242,15 @@ def main():
         is_cross_compile = target_cpu != host_cpu
         if is_cross_compile:
             print(f"==> Cross-compiling from {host_cpu} to {target_cpu}")
-            # Don't use sysroot - it has old libstdc++ without C++20 support
-            # The cross-compilation toolchain provides the necessary headers
-        gn_args.append("use_sysroot=false")
+        gn_args_prefix.append("use_sysroot=false")
 
-    # Use sccache if available
-    sccache_path = shutil.which("sccache")
-    if sccache_path:
-        print(f"==> Using sccache: {sccache_path}")
-        gn_args.append(f'cc_wrapper="{sccache_path}"')
-    else:
-        print("==> sccache not found, building without compilation cache")
+    # Read args.gn file
+    print(f"==> Using args.gn: {args.args_gn}")
+    with open(args.args_gn, "r") as f:
+        custom_args = f.read()
 
-    gn_args_str = " ".join(gn_args)
+    # Combine prefix args with custom args
+    gn_args_str = "\n".join(gn_args_prefix) + "\n" + custom_args
 
     # Run gn gen
     print("==> Running gn gen...")
@@ -215,6 +280,11 @@ def main():
         print("Check the output directory for the built library.")
 
     print(f"Headers location: {os.path.join(v8_dir, 'include')}")
+
+    # Install if requested
+    if args.install_dir:
+        install_dir = os.path.abspath(args.install_dir)
+        install_v8(v8_dir, out_path, install_dir, target_os)
 
 
 if __name__ == "__main__":

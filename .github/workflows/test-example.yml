@@ -23,6 +23,9 @@ jobs:
           - os: macos-arm64
             runner: macos-15
 
+          - os: macos-x64
+            runner: macos-13
+
           - os: windows-x64
             runner: windows-latest
 

@@ -1,0 +1,13 @@
+# V8 build configuration
+# Additional flags are automatically prepended by build.py for a typical
+# embeddable build, see generated args.gn after build for the full
+# configuration. By including values for those flags here you can overwrite
+# them if necessary (but be cautious when doing that).
+
+v8_use_external_startup_data=false
+v8_enable_sandbox=false
+v8_enable_pointer_compression=false
+v8_enable_i18n_support=false
+v8_enable_temporal_support=false
+enable_rust=false
+v8_enable_webassembly=true

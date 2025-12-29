@@ -5,3 +5,4 @@ depot_tools
 .gclient*
 .cipd
 example/build
+todo.txt

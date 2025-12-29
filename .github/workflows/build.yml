@@ -5,39 +5,35 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+env:
+  V8_VERSION: "14.0.365.10"
+
 jobs:
   build:
-    name: ${{ matrix.os }}-${{ matrix.arch }}
+    name: ${{ matrix.build_type }}-${{ matrix.platform }}
     runs-on: ${{ matrix.runner }}
-    env:
-      V8_VERSION: "14.0.365.10"
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: linux
-            arch: x64
-            runner: ubuntu-24.04
-            lib_name: libv8_monolith.a
-            cross_compile: false
+          # Linux x64
+          - { os: linux, target_cpu: x64, runner: ubuntu-24.04, platform: x86_64-unknown-linux-gnu, build_type: release }
+          - { os: linux, target_cpu: x64, runner: ubuntu-24.04, platform: x86_64-unknown-linux-gnu, build_type: debug }
 
-          - os: linux
-            arch: arm64
-            runner: ubuntu-24.04
-            lib_name: libv8_monolith.a
-            cross_compile: true
+          # Linux arm64
+          - { os: linux, target_cpu: arm64, runner: ubuntu-24.04, platform: aarch64-unknown-linux-gnu, build_type: release }
+          - { os: linux, target_cpu: arm64, runner: ubuntu-24.04, platform: aarch64-unknown-linux-gnu, build_type: debug }
 
-          - os: mac
-            arch: arm64
-            runner: macos-15
-            lib_name: libv8_monolith.a
-            cross_compile: false
+          # macOS arm64
+          - { os: mac, target_cpu: arm64, runner: macos-15, platform: aarch64-apple-darwin, build_type: release }
+          - { os: mac, target_cpu: arm64, runner: macos-15, platform: aarch64-apple-darwin, build_type: debug }
 
-          - os: win
-            arch: x64
-            runner: windows-2022
-            lib_name: v8_monolith.lib
-            cross_compile: false
+          # macOS x64
+          - { os: mac, target_cpu: x64, runner: macos-13, platform: x86_64-apple-darwin, build_type: release }
+          - { os: mac, target_cpu: x64, runner: macos-13, platform: x86_64-apple-darwin, build_type: debug }
+
+          # Windows x64 (release only, debug not supported)
+          - { os: win, target_cpu: x64, runner: windows-2022, platform: x86_64-pc-windows-msvc, build_type: release }
 
     steps:
       - name: Configure git
@@ -51,52 +47,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Cache V8 and depot_tools
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/sccache
-          key: v8-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('clone.py') }}-${{ env.V8_VERSION }}
-          restore-keys: |
-            v8-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('clone.py') }}-
-            v8-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Install and start sccache
-        shell: bash
-        run: |
-          # Determine platform
-          case "${{ runner.os }}-${{ runner.arch }}" in
-            Linux-X64)   PLATFORM="x86_64-unknown-linux-musl" ;;
-            Linux-ARM64) PLATFORM="aarch64-unknown-linux-musl" ;;
-            macOS-X64)   PLATFORM="x86_64-apple-darwin" ;;
-            macOS-ARM64) PLATFORM="aarch64-apple-darwin" ;;
-            Windows-X64) PLATFORM="x86_64-pc-windows-msvc" ;;
-            *) echo "Unsupported platform"; exit 1 ;;
-          esac
-
-          VERSION="v0.8.2"
-          BASENAME="sccache-${VERSION}-${PLATFORM}"
-          URL="https://github.com/mozilla/sccache/releases/download/${VERSION}/${BASENAME}.tar.gz"
-
-          curl -LO "$URL"
-          tar -xzf "${BASENAME}.tar.gz"
-          echo "$PWD/${BASENAME}" >> $GITHUB_PATH
-
-          # Start sccache server
-          ./${BASENAME}/sccache --start-server || true
-
-          # Set cache directory
-          echo "SCCACHE_DIR=$HOME/.cache/sccache" >> $GITHUB_ENV
-          echo "SCCACHE_CACHE_SIZE=2G" >> $GITHUB_ENV
-
       - name: Install Linux dependencies
-        if: matrix.os == 'linux' && !matrix.cross_compile
+        if: matrix.os == 'linux' && matrix.target_cpu == 'x64'
         run: |
           sudo apt-get update
           sudo apt-get install -y clang lld pkg-config libglib2.0-dev
 
       - name: Install cross-compilation toolchain
-        if: matrix.cross_compile
+        if: matrix.os == 'linux' && matrix.target_cpu == 'arm64'
         run: |
           sudo apt-get update
           sudo apt-get install -yq --no-install-suggests --no-install-recommends \
@@ -104,34 +62,16 @@ jobs:
             g++-aarch64-linux-gnu gcc-aarch64-linux-gnu
 
       - name: Clone V8
-        run: python clone.py
+        run: python clone.py --v8-version ${{ env.V8_VERSION }}
 
       - name: Build V8
-        run: python build.py
-        env:
-          TARGET_CPU: ${{ matrix.cross_compile && 'arm64' || '' }}
-
-      - name: Prepare artifacts
-        shell: bash
-        run: |
-          mkdir -p artifacts
-          cp v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/${{ matrix.lib_name }} artifacts/
-          # On Linux, also copy additional required libraries and convert them from thin archives
-          if [ "${{ matrix.os }}" = "linux" ]; then
-            LIBBASE=v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/libv8_libbase.a
-            LIBPLATFORM=v8/out.gn/${{ matrix.os }}-${{ matrix.arch }}-release/obj/libv8_libplatform.a
-            ar -t $LIBBASE | xargs ar rvs $LIBBASE.new && mv -v $LIBBASE.new $LIBBASE
-            ar -t $LIBPLATFORM | xargs ar rvs $LIBPLATFORM.new && mv -v $LIBPLATFORM.new $LIBPLATFORM
-            cp $LIBBASE artifacts/
-            cp $LIBPLATFORM artifacts/
-          fi
-          cp -r v8/include artifacts/
+        run: python build.py --args-gn args.gn --target-cpu ${{ matrix.target_cpu }} ${{ matrix.build_type == 'debug' && '--debug' || '' }} --install v8_${{ matrix.build_type }}_${{ matrix.platform }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: v8-${{ matrix.os }}-${{ matrix.arch }}
-          path: artifacts/
+          name: v8_${{ matrix.build_type }}_${{ matrix.platform }}
+          path: v8_${{ matrix.build_type }}_${{ matrix.platform }}/
 
   release:
     name: Create Release
