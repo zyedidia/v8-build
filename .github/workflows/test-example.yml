@@ -58,7 +58,7 @@ jobs:
             # Build in Release mode to match V8 prebuilt binaries
             cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl ..
           elif [ "${{ runner.os }}" = "Linux" ]; then
-            cmake -G Ninja -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_CXX_FLAGS="-fuse-ld=lld"
+            cmake -G Ninja -DCMAKE_C_COMPILER=clang-19 -DCMAKE_CXX_COMPILER=clang++-19 -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_CXX_FLAGS="-fuse-ld=lld"
           else
             cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
           fi
