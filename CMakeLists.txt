@@ -107,6 +107,12 @@ set_target_properties(v8_monolith PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${V8_DIR}/include"
 )
 
+# Debug build definitions
+if(V8_DEBUG)
+    set_property(TARGET v8_monolith APPEND PROPERTY
+        INTERFACE_COMPILE_DEFINITIONS V8_ENABLE_CHECKS)
+endif()
+
 # Platform-specific link libraries
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set_property(TARGET v8_monolith APPEND PROPERTY
