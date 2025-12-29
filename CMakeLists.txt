@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(V8_VERSION "v14.0.365.10-13" CACHE STRING "V8 version to download")
 set(V8_REPO "zyedidia/v8-build" CACHE STRING "GitHub repository for V8 prebuilts")
 option(V8_DEBUG "Download debug build of V8" OFF)
+set(V8_LOCAL_PATH "" CACHE PATH "Path to local V8 install directory (skips download if set)")
 
 # Determine build type
 if(V8_DEBUG)
@@ -48,35 +49,40 @@ else()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif()
 
-# Download and extract V8
-set(V8_URL "https://github.com/${V8_REPO}/releases/download/${V8_VERSION}/v8_${V8_BUILD_TYPE}_${V8_PLATFORM}.tar.gz")
-set(V8_DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
-set(V8_ARCHIVE "${V8_DOWNLOAD_DIR}/v8.tar.gz")
+# Use local path or download
+if(V8_LOCAL_PATH)
+    set(V8_DIR "${V8_LOCAL_PATH}")
+    message(STATUS "Using local V8: ${V8_DIR}")
+else()
+    set(V8_URL "https://github.com/${V8_REPO}/releases/download/${V8_VERSION}/v8_${V8_BUILD_TYPE}_${V8_PLATFORM}.tar.gz")
+    set(V8_DIR "${CMAKE_CURRENT_BINARY_DIR}/v8")
+    set(V8_ARCHIVE "${V8_DIR}/v8.tar.gz")
 
-if(NOT EXISTS "${V8_DOWNLOAD_DIR}/${V8_LIB_NAME}")
-    message(STATUS "Downloading V8 ${V8_VERSION} (${V8_BUILD_TYPE}) for ${V8_PLATFORM}...")
-    file(DOWNLOAD "${V8_URL}" "${V8_ARCHIVE}"
-         SHOW_PROGRESS
-         STATUS DOWNLOAD_STATUS)
+    if(NOT EXISTS "${V8_DIR}/${V8_LIB_NAME}")
+        message(STATUS "Downloading V8 ${V8_VERSION} (${V8_BUILD_TYPE}) for ${V8_PLATFORM}...")
+        file(DOWNLOAD "${V8_URL}" "${V8_ARCHIVE}"
+             SHOW_PROGRESS
+             STATUS DOWNLOAD_STATUS)
 
-    list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-    if(NOT STATUS_CODE EQUAL 0)
-        list(GET DOWNLOAD_STATUS 1 ERROR_MESSAGE)
-        message(FATAL_ERROR "Failed to download V8: ${ERROR_MESSAGE}")
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        if(NOT STATUS_CODE EQUAL 0)
+            list(GET DOWNLOAD_STATUS 1 ERROR_MESSAGE)
+            message(FATAL_ERROR "Failed to download V8: ${ERROR_MESSAGE}")
+        endif()
+
+        message(STATUS "Extracting V8...")
+        file(ARCHIVE_EXTRACT
+             INPUT "${V8_ARCHIVE}"
+             DESTINATION "${V8_DIR}")
+
+        file(REMOVE "${V8_ARCHIVE}")
     endif()
-
-    message(STATUS "Extracting V8...")
-    file(ARCHIVE_EXTRACT
-         INPUT "${V8_ARCHIVE}"
-         DESTINATION "${V8_DOWNLOAD_DIR}")
-
-    file(REMOVE "${V8_ARCHIVE}")
 endif()
 
 # Find V8 library
 find_library(V8_LIBRARY
     NAMES ${V8_LIB_NAME}
-    PATHS "${V8_DOWNLOAD_DIR}"
+    PATHS "${V8_DIR}"
     NO_DEFAULT_PATH
     REQUIRED)
 
@@ -84,12 +90,12 @@ find_library(V8_LIBRARY
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_library(V8_LIBBASE
         NAMES libv8_libbase.a
-        PATHS "${V8_DOWNLOAD_DIR}"
+        PATHS "${V8_DIR}"
         NO_DEFAULT_PATH
         REQUIRED)
     find_library(V8_LIBPLATFORM
         NAMES libv8_libplatform.a
-        PATHS "${V8_DOWNLOAD_DIR}"
+        PATHS "${V8_DIR}"
         NO_DEFAULT_PATH
         REQUIRED)
 endif()
@@ -98,7 +104,7 @@ endif()
 add_library(v8_monolith STATIC IMPORTED GLOBAL)
 set_target_properties(v8_monolith PROPERTIES
     IMPORTED_LOCATION "${V8_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${V8_DOWNLOAD_DIR}/include"
+    INTERFACE_INCLUDE_DIRECTORIES "${V8_DIR}/include"
 )
 
 # Platform-specific link libraries

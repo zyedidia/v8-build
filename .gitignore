@@ -6,4 +6,4 @@ depot_tools
 .cipd
 example/build
 todo.txt
-/v8-install
+/v8-install*
