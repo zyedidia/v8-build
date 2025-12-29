@@ -4,6 +4,7 @@ depot_tools
 .gcs_entries
 .gclient*
 .cipd
-example/build
+examples/advanced/build
+examples/hello/build
 todo.txt
 /v8-install*

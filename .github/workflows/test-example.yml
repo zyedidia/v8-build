@@ -48,7 +48,7 @@ jobs:
           echo "C:\ProgramData\chocolatey\lib\ninja\tools" >> $GITHUB_PATH
 
       - name: Configure CMake
-        working-directory: example
+        working-directory: examples/hello
         shell: bash
         run: |
           mkdir -p build
@@ -63,31 +63,63 @@ jobs:
             cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
           fi
 
-      - name: Build example
-        working-directory: example/build
+      - name: Build hello example
+        working-directory: examples/hello/build
         run: ninja
 
-      - name: Run example
-        working-directory: example/build
+      - name: Configure advanced examples
+        working-directory: examples/advanced
+        shell: bash
+        run: |
+          mkdir -p build
+          cd build
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl ..
+          elif [ "${{ runner.os }}" = "Linux" ]; then
+            cmake -G Ninja -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_CXX_FLAGS="-fuse-ld=lld"
+          else
+            cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+          fi
+
+      - name: Build advanced examples
+        working-directory: examples/advanced/build
+        run: ninja
+
+      - name: Run advanced examples
+        working-directory: examples/advanced/build
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            ./hello_world.exe
+            EXT=".exe"
           else
-            ./hello_world
+            EXT=""
+          fi
+          for example in callbacks globals objects exceptions wrap_class call_js; do
+            echo "=== Running $example ==="
+            ./${example}${EXT}
+          done
+
+      - name: Run example
+        working-directory: examples/hello/build
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ./hello.exe
+          else
+            ./hello
           fi
 
       - name: Verify output
-        working-directory: example/build
+        working-directory: examples/hello/build
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            OUTPUT=$(./hello_world.exe)
+            OUTPUT=$(./hello.exe)
           else
-            OUTPUT=$(./hello_world)
+            OUTPUT=$(./hello)
           fi
 
-          if [[ "$OUTPUT" == *"Hello, World!"* ]]; then
+          if [[ "$OUTPUT" == *"Hello world!"* ]]; then
             echo "Example ran successfully and produced expected output"
           else
             echo "Example output did not match expected"

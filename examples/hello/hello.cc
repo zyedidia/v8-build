@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
 
     // Create a string containing the JavaScript source code
     v8::Local<v8::String> source =
-        v8::String::NewFromUtf8Literal(isolate, "'Hello' + ', World!'");
+        v8::String::NewFromUtf8Literal(isolate, "'Hello' + ' world!'");
 
     // Compile the source code
     v8::Local<v8::Script> script =

@@ -31,7 +31,12 @@ To use a debug build:
 cmake -B build -DV8_DEBUG=ON .
 ```
 
-See `example/` for a complete "hello world" example.
+This will automatically download the correct release from GitHub. If you have a
+local build or manually downloaded the prebuilt version, you can use
+`V8_LOCAL_PATH` to point CMake to that.
+
+See `examples/hello/` for a complete "hello world" example and
+`examples/advanced` for more advanced examples.
 
 ## Building from Source
 
