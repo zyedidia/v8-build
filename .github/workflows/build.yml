@@ -31,6 +31,9 @@ jobs:
           # Windows x64 (release only, debug not supported)
           - { os: win, target_cpu: x64, runner: windows-2022, platform: x86_64-pc-windows-msvc, build_type: release }
 
+          # Windows arm64 (release only, debug not supported)
+          - { os: win, target_cpu: arm64, runner: windows-11-arm, platform: aarch64-pc-windows-msvc, build_type: release }
+
     steps:
       - name: Configure git
         run: git config --global core.symlinks true
