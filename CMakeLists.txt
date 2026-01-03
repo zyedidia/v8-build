@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # V8 version to download
-set(V8_VERSION "v14.0.365.10-17" CACHE STRING "V8 version to download")
+set(V8_VERSION "v14.0.365.10-19" CACHE STRING "V8 version to download")
 set(V8_REPO "zyedidia/v8-build" CACHE STRING "GitHub repository for V8 prebuilts")
 option(V8_DEBUG "Download debug build of V8" OFF)
 set(V8_LOCAL_PATH "" CACHE PATH "Path to local V8 install directory (skips download if set)")

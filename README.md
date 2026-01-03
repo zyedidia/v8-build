@@ -8,7 +8,7 @@ Prebuilt V8 static libraries for embedding. Builds are automated via GitHub Acti
 |----------|--------------|---------|-------|
 | Linux | x86_64, aarch64 | Yes | Yes |
 | macOS | aarch64 | Yes | Yes |
-| Windows | x86_64 | Yes | No |
+| Windows | x86_64, aarch64 | Yes | No |
 
 ## Using Prebuilt Binaries
 
